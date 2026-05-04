@@ -28,22 +28,6 @@ class SASInput(InputSignal, Lorentz):
     Le dérivateur RC produit une forme proportionnelle à la dérivée :
 
         dL/dx = -2x / (1 + x²)²    ← _lorentz_slope dans la classe Lorentz
-
-    Après normalisation (maximum = 1), on obtient _lorentz_slope_normalized(x),
-    dont les extrema sont en x = ±1/√3 ≈ ±0.58 bandwidth.
-
-    Choix de la forme dans expected_signal
-    ---------------------------------------
-    Si le dérivateur RC est idéal (fréquence de coupure ≫ Γ) :
-        → utiliser _lorentz_slope_normalized  (forme exacte)
-    Si la dérivation est partielle (fréquence de coupure ≈ Γ) :
-        → la forme réelle est plus proche de x/(1+x²) (forme quasi-dispersive)
-
-    Pour la lockbox, les deux fonctions ont le même zéro en x=0 et des extrema
-    symétriques. Seule la pente au zéro (utilisée pour le gain PID) diffère.
-    La calibration mesure l'amplitude réelle, donc le gain sera correct dans
-    les deux cas. On utilise _lorentz_slope_normalized par défaut car c'est la
-    forme physiquement exacte pour un dérivateur RC idéal.
     """
 
     # ------------------------------------------------------------------
@@ -63,6 +47,7 @@ class SASInput(InputSignal, Lorentz):
         est mesuré lors de la calibration sur la courbe centrée,
         de sorte que expected_signal(±1/√3) = ±amplitude.
         """
+        
         x = variable * self.lockbox._setpoint_unit_in_unit("bandwidth") 
         A = self.calibration_data.amplitude
         # _lorentz_slope_normalized : extrema ±1 en x = ±1/√3, zéro en x=0
@@ -70,10 +55,12 @@ class SASInput(InputSignal, Lorentz):
 
     def expected_slope(self, variable):
         """
-        Dérivée analytique de expected_signal pas nécessaire je pense.
+        Dérivée analytique de expected_signal.
         """
+        A = self.calibration_data.amplitude
         norm =3*np.sqrt(3)/8
-        return -2/norm
+        dxdv = self.lockbox._setpoint_unit_in_unit("bandwidth")
+        return -2*A/norm*dxdv
 
     # ------------------------------------------------------------------
     # Calibration
