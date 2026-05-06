@@ -139,3 +139,4 @@ run_pyrpl_in_notebook.ipynb
 act.exe
 /.vscode
 .vscode/settings.json
+.DS_Store
