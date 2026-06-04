@@ -17,7 +17,7 @@ from pyrpl.software_modules.lockbox.models.fabryperot import Lorentz
 # Classe 1 : le signal d'entrée SAS
 # ==============================================================================
 
-class SASInput(InputSignal, Lorentz):
+class SASDeriveInput(InputSignal, Lorentz):
     """
     Physique du signal
     ------------------
@@ -135,6 +135,31 @@ class SASInput(InputSignal, Lorentz):
 
         return None
 
+class SASDirectInput(InputSignal, Lorentz):
+    """
+    Signal SAS non dérivé : la Lamb dip (Lorentzienne en absorption).
+    Utilisé pour le verrouillage grossier sur le flanc.
+    Le setpoint 0 correspond au minimum de la résonance (fond du creux).
+    Un setpoint de ±1/√3 ≈ ±0.577 correspond au flanc à pente maximale.
+    """
+    def expected_signal(self, variable):
+        x = variable * self.lockbox._setpoint_unit_in_unit("bandwidth")
+        A = self.calibration_data.amplitude
+        # Lorentzienne en absorption : 0 au minimum, +A hors résonance
+        # _lorentz(0) = 1, _lorentz(∞) = 0
+        # On centre : expected_signal = 0 en dehors de la résonance,
+        #             expected_signal = -A au fond du creux
+        return A * (self._lorentz(x) - 1.0)
+
+    def calibrate(self, autosave=False, timeout_min=1):
+        curve, times = self.sweep_acquire(timeout_min=timeout_min)
+        if curve is None:
+            return None
+        # Pas de soustraction de baseline ici : la ligne de base est le niveau
+        # hors résonance, qui est la référence naturelle pour une Lorentzienne
+        self.calibration_data.get_stats_from_curve(curve)
+        self.lockbox._signal_launcher.input_calibrated.emit([self])
+        return None
 
 # ==============================================================================
 # Classe 2 : la Lockbox SAS complète
@@ -150,7 +175,8 @@ class SASLockbox(Lockbox):
     transition_linewidth : FWHM de la transition atomique (Hz)
     setpoint_unit        : unité du setpoint (bandwidth, Hz, MHz)
 
-    Entrée  : sas   → SASInput (entrée analogique Red Pitaya)
+    Entrée 1  : reference  → SASDirectInput :(entrée analogique Red Pitaya)
+    Entrée 2 : sas_derive -> SASDeriveInput :entrée analogique red pitaya 
     Sortie  : piezo → PiezoOutput (cale piezo laser, courant, AOM…)
 
     Utilisation rapide
@@ -208,7 +234,7 @@ class SASLockbox(Lockbox):
     # Entrées / sorties
     # ------------------------------------------------------------------
 
-    inputs  = LockboxModuleDictProperty(sas=SASInput)
+    inputs  = LockboxModuleDictProperty(reference=SASDirectInput,sas_derive=SASDeriveInput)
     outputs = LockboxModuleDictProperty(piezo=PiezoOutput)
 
     # ------------------------------------------------------------------
