@@ -216,4 +216,4 @@ class SASLockbox(Lockbox):
     # ------------------------------------------------------------------
 
     _setup_attributes = ["transition_linewidth", "setpoint_unit","inputs","outputs"]
-    _gui_attributes   = ["transition_linewidth", "setpoint_unit","inputs","outputs"]
+    _gui_attributes   = ["transition_linewidth", "setpoint_unit"]
